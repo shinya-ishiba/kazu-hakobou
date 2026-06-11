@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>かずをはこぼう!</title>
+<style>
+  * { box-sizing: border-box; touch-action: manipulation; -webkit-tap-highlight-color: transparent; }
+  html, body { margin: 0; height: 100%; }
+  body {
+    font-family: "Hiragino Maru Gothic ProN", "BIZ UDGothic", "Yu Gothic", sans-serif;
+    background: linear-gradient(#aee3ff 0%, #d8f3ff 55%, #b8e6a0 55%, #9ed98a 100%);
+    overflow: hidden;
+    user-select: none;
+  }
+  #app { display: flex; flex-direction: column; height: 100%; max-width: 760px; margin: 0 auto; }
+
+  #topbar { display: flex; align-items: center; justify-content: space-between; padding: 10px 14px 0; }
+  #title { font-size: 20px; font-weight: bold; color: #2b6cb0; }
+  #stars { font-size: 22px; min-height: 28px; }
+
+  #question {
+    text-align: center; font-size: 26px; font-weight: bold; color: #333;
+    background: #fffdf2; border: 4px solid #f6c453; border-radius: 20px;
+    margin: 8px 14px; padding: 10px;
+  }
+  #question .num { font-size: 44px; color: #e53e3e; margin: 0 4px; }
+
+  #scene { position: relative; flex: 1; min-height: 230px; overflow: hidden; }
+  #road {
+    position: absolute; left: 0; right: 0; bottom: 0; height: 48px; background: #6b7280;
+    background-image: repeating-linear-gradient(90deg, #fff 0 30px, transparent 30px 60px);
+    background-size: 60px 6px; background-position: 0 center; background-repeat: repeat-x;
+  }
+  #truck { position: absolute; bottom: 38px; left: 28px; width: 330px; height: 160px; }
+  #truck.drive { animation: drive 1.6s ease-in forwards; }
+  #truck.enter { animation: enter .8s ease-out; }
+  #truck.shake { animation: shake .5s; }
+  @keyframes drive { to { transform: translateX(140vw); } }
+  @keyframes enter { from { transform: translateX(-130%); } to { transform: translateX(0); } }
+  @keyframes shake {
+    0%,100% { transform: translateX(0); } 25% { transform: translateX(-8px); }
+    50% { transform: translateX(8px); } 75% { transform: translateX(-5px); }
+  }
+  #bed {
+    position: absolute; left: 0; bottom: 26px; width: 232px; height: 118px;
+    background: #d9a066; border: 4px solid #8c5a2b; border-radius: 8px 8px 4px 4px;
+    display: flex; flex-wrap: wrap-reverse; align-content: flex-start; justify-content: center;
+    padding: 4px; gap: 0;
+  }
+  #bed .item { font-size: 36px; line-height: 1; border: none; background: none; padding: 1px; cursor: pointer; }
+  #cab {
+    position: absolute; left: 236px; bottom: 26px; width: 88px; height: 76px;
+    background: #4299e1; border: 4px solid #2b6cb0; border-radius: 10px 22px 4px 4px;
+  }
+  #cab::before { /* window */
+    content: ""; position: absolute; top: 8px; left: 10px; width: 44px; height: 30px;
+    background: #e6f7ff; border: 3px solid #2b6cb0; border-radius: 4px;
+  }
+  .wheel {
+    position: absolute; bottom: 0; width: 44px; height: 44px; border-radius: 50%;
+    background: #2d3748; border: 5px solid #1a202c;
+  }
+  .wheel::after { /* hub mark so spinning is visible */
+    content: ""; position: absolute; top: 4px; left: 50%; width: 6px; height: 12px;
+    margin-left: -3px; background: #cbd5e0; border-radius: 3px;
+  }
+  .wheel.w1 { left: 28px; } .wheel.w2 { left: 150px; } .wheel.w3 { left: 254px; }
+  #truck.drive .wheel { animation: spin .4s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  #pop {
+    position: absolute; left: 90px; bottom: 170px; font-size: 64px; font-weight: bold;
+    color: #e53e3e; text-shadow: 2px 2px 0 #fff; opacity: 0; pointer-events: none;
+  }
+  #pop.show { animation: popup .6s ease-out; }
+  @keyframes popup {
+    0% { opacity: 0; transform: scale(.4); } 30% { opacity: 1; transform: scale(1.2); }
+    100% { opacity: 0; transform: scale(1) translateY(-24px); }
+  }
+
+  #message {
+    position: absolute; left: 0; right: 0; top: 12px; text-align: center;
+    font-size: 30px; font-weight: bold; color: #d53f8c; text-shadow: 2px 2px 0 #fff;
+    min-height: 40px; pointer-events: none;
+  }
+
+  #tray {
+    display: flex; flex-wrap: wrap; justify-content: center; gap: 6px;
+    background: #fff8; border-radius: 20px; margin: 0 14px; padding: 10px; min-height: 76px;
+  }
+  #tray .item {
+    font-size: 48px; line-height: 1; border: none; background: none; padding: 2px;
+    cursor: pointer; transition: transform .1s;
+  }
+  #tray .item:active { transform: scale(1.3); }
+
+  #go {
+    margin: 12px auto 16px; padding: 14px 60px; font-size: 32px; font-weight: bold;
+    color: #fff; background: #f56565; border: none; border-radius: 40px;
+    box-shadow: 0 6px 0 #c53030; cursor: pointer; font-family: inherit;
+  }
+  #go:active { transform: translateY(4px); box-shadow: 0 2px 0 #c53030; }
+  #go:disabled { opacity: .5; }
+
+  #start-overlay {
+    position: fixed; inset: 0; background: #aee3ffee; display: flex;
+    flex-direction: column; align-items: center; justify-content: center; gap: 24px; z-index: 10;
+  }
+  #start-overlay h1 { font-size: 40px; color: #2b6cb0; text-shadow: 2px 2px 0 #fff; margin: 0; }
+  #start-overlay .truck-icon { font-size: 90px; }
+  #start-btn {
+    padding: 18px 70px; font-size: 36px; font-weight: bold; color: #fff;
+    background: #48bb78; border: none; border-radius: 50px; box-shadow: 0 6px 0 #2f855a;
+    cursor: pointer; font-family: inherit;
+  }
+  .confetti { position: absolute; top: -50px; font-size: 30px; animation: fall 1.8s linear forwards; pointer-events: none; }
+  @keyframes fall { to { transform: translateY(110vh) rotate(360deg); } }
+</style>
+</head>
+<body>
+<div id="app">
+  <div id="topbar">
+    <div id="title">🚚 かずをはこぼう!</div>
+    <div id="stars"></div>
+  </div>
+  <div id="question">…</div>
+  <div id="scene">
+    <div id="message"></div>
+    <div id="truck">
+      <div id="bed"></div>
+      <div id="cab"></div>
+      <div class="wheel w1"></div>
+      <div class="wheel w2"></div>
+      <div class="wheel w3"></div>
+      <div id="pop"></div>
+    </div>
+    <div id="road"></div>
+  </div>
+  <div id="tray"></div>
+  <button id="go">しゅっぱつ!</button>
+</div>
+
+<div id="start-overlay">
+  <div class="truck-icon">🚚💨</div>
+  <h1>かずをはこぼう!</h1>
+  <button id="start-btn">はじめる</button>
+</div>
+
+<script>
+const CARGO = [
+  { emoji: "🍎", name: "りんご" },
+  { emoji: "🍊", name: "みかん" },
+  { emoji: "🍉", name: "すいか" },
+  { emoji: "🥕", name: "にんじん" },
+  { emoji: "🎁", name: "プレゼント" },
+  { emoji: "⚽", name: "ボール" },
+];
+
+const $ = (id) => document.getElementById(id);
+const truck = $("truck"), bed = $("bed"), tray = $("tray");
+let target = 0, cargo = null, score = 0, busy = false;
+
+let audioCtx = null;
+function tone(freq, dur, delay = 0, type = "sine", vol = 0.2) {
+  if (!audioCtx) return;
+  const t = audioCtx.currentTime + delay;
+  const o = audioCtx.createOscillator(), g = audioCtx.createGain();
+  o.type = type; o.frequency.value = freq;
+  g.gain.setValueAtTime(vol, t);
+  g.gain.exponentialRampToValueAtTime(0.001, t + dur);
+  o.connect(g).connect(audioCtx.destination);
+  o.start(t); o.stop(t + dur);
+}
+const popSound = (n) => tone(440 + n * 60, 0.15);
+const successSound = () => [523, 659, 784, 1047].forEach((f, i) => tone(f, 0.25, i * 0.12));
+const wrongSound = () => tone(180, 0.35, 0, "square", 0.08);
+
+function rand(n) { return Math.floor(Math.random() * n); }
+
+function newRound() {
+  const maxN = Math.min(3 + Math.floor(score / 2), 9);
+  target = 1 + rand(maxN);
+  cargo = CARGO[rand(CARGO.length)];
+  $("question").innerHTML =
+    `${cargo.emoji} ${cargo.name}を <span class="num">${target}</span>こ のせてね!`;
+  $("message").textContent = "";
+  bed.innerHTML = "";
+  tray.innerHTML = "";
+  const trayCount = Math.min(target + 2 + rand(3), 10);
+  for (let i = 0; i < trayCount; i++) {
+    const b = document.createElement("button");
+    b.className = "item";
+    b.textContent = cargo.emoji;
+    b.setAttribute("aria-label", cargo.name);
+    b.addEventListener("click", onItemTap);
+    tray.appendChild(b);
+  }
+  truck.classList.remove("drive");
+  truck.classList.add("enter");
+  truck.addEventListener("animationend", () => truck.classList.remove("enter"), { once: true });
+  $("go").disabled = false;
+  busy = false;
+}
+
+function onItemTap(e) {
+  if (busy) return;
+  const item = e.currentTarget;
+  if (item.parentElement === tray) {
+    if (bed.children.length >= 10) return;
+    bed.appendChild(item);
+    const n = bed.children.length;
+    popSound(n);
+    showPop(n);
+  } else {
+    tray.appendChild(item);
+    tone(300, 0.1);
+  }
+}
+
+function showPop(n) {
+  const pop = $("pop");
+  pop.textContent = n;
+  pop.classList.remove("show");
+  void pop.offsetWidth; // restart the animation
+  pop.classList.add("show");
+}
+
+function depart() {
+  if (busy) return;
+  const n = bed.children.length;
+  if (n === target) {
+    busy = true;
+    $("go").disabled = true;
+    score++;
+    $("stars").textContent = "⭐".repeat(Math.min(score, 10)) + (score > 10 ? ` ×${score}` : "");
+    $("message").textContent = "せいかい! すごい!! 🎉";
+    successSound();
+    confetti();
+    setTimeout(() => truck.classList.add("drive"), 500);
+    setTimeout(newRound, 2300);
+  } else {
+    wrongSound();
+    $("message").textContent =
+      n < target ? "あれ? たりないよ。かぞえてみよう!" : "あれ? おおいよ。かぞえてみよう!";
+    truck.classList.add("shake");
+    truck.addEventListener("animationend", () => truck.classList.remove("shake"), { once: true });
+  }
+}
+
+function confetti() {
+  const scene = $("scene");
+  const pieces = ["🎉", "⭐", "🎊", "💮"];
+  for (let i = 0; i < 20; i++) {
+    const s = document.createElement("span");
+    s.className = "confetti";
+    s.textContent = pieces[rand(pieces.length)];
+    s.style.left = rand(100) + "%";
+    s.style.animationDelay = rand(6) / 10 + "s";
+    scene.appendChild(s);
+    setTimeout(() => s.remove(), 2600);
+  }
+}
+
+$("go").addEventListener("click", depart);
+$("start-btn").addEventListener("click", () => {
+  audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  $("start-overlay").remove();
+  newRound();
+});
+</script>
+</body>
+</html>
