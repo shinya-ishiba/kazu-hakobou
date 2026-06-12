@@ -189,7 +189,7 @@ function newRound() {
   targets = types.map((c) => ({ cargo: c, count: 1 + rand(maxN) }));
   $("question").innerHTML =
     targets
-      .map((t) => `${t.cargo.emoji} ${t.cargo.name}を <span class="num">${t.count}</span>こ`)
+      .map((t) => `${t.cargo.name}を <span class="num">${t.count}</span>こ`)
       .join("、") + " のせてね!";
   $("message").textContent = "";
   bed.innerHTML = "";
