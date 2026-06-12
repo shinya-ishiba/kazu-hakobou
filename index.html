@@ -159,7 +159,7 @@ const CARGO = [
 
 const $ = (id) => document.getElementById(id);
 const truck = $("truck"), bed = $("bed"), tray = $("tray");
-let target = 0, cargo = null, score = 0, busy = false;
+let targets = [], score = 0, busy = false;
 
 let audioCtx = null;
 function tone(freq, dur, delay = 0, type = "sine", vol = 0.2) {
@@ -179,20 +179,35 @@ const wrongSound = () => tone(180, 0.35, 0, "square", 0.08);
 function rand(n) { return Math.floor(Math.random() * n); }
 
 function newRound() {
-  const maxN = Math.min(3 + Math.floor(score / 2), 9);
-  target = 1 + rand(maxN);
-  cargo = CARGO[rand(CARGO.length)];
+  const typeCount = score < 2 ? 1 : 2;
+  const maxN = Math.min(3 + Math.floor(score / 3), 5);
+  const types = [];
+  while (types.length < typeCount) {
+    const c = CARGO[rand(CARGO.length)];
+    if (!types.includes(c)) types.push(c);
+  }
+  targets = types.map((c) => ({ cargo: c, count: 1 + rand(maxN) }));
   $("question").innerHTML =
-    `${cargo.emoji} ${cargo.name}を <span class="num">${target}</span>こ のせてね!`;
+    targets
+      .map((t) => `${t.cargo.emoji} ${t.cargo.name}を <span class="num">${t.count}</span>こ`)
+      .join("、") + " のせてね!";
   $("message").textContent = "";
   bed.innerHTML = "";
   tray.innerHTML = "";
-  const trayCount = Math.min(target + 2 + rand(3), 10);
-  for (let i = 0; i < trayCount; i++) {
+  const trayItems = [];
+  for (const t of targets) {
+    const extra = 1 + rand(2);
+    for (let i = 0; i < t.count + extra; i++) trayItems.push(t.cargo);
+  }
+  for (let i = trayItems.length - 1; i > 0; i--) {
+    const j = rand(i + 1);
+    [trayItems[i], trayItems[j]] = [trayItems[j], trayItems[i]];
+  }
+  for (const c of trayItems) {
     const b = document.createElement("button");
     b.className = "item";
-    b.textContent = cargo.emoji;
-    b.setAttribute("aria-label", cargo.name);
+    b.textContent = c.emoji;
+    b.setAttribute("aria-label", c.name);
     b.addEventListener("click", onItemTap);
     tray.appendChild(b);
   }
@@ -209,7 +224,7 @@ function onItemTap(e) {
   if (item.parentElement === tray) {
     if (bed.children.length >= 10) return;
     bed.appendChild(item);
-    const n = bed.children.length;
+    const n = [...bed.children].filter((b) => b.textContent === item.textContent).length;
     popSound(n);
     showPop(n);
   } else {
@@ -226,10 +241,14 @@ function showPop(n) {
   pop.classList.add("show");
 }
 
+function countInBed(emoji) {
+  return [...bed.children].filter((b) => b.textContent === emoji).length;
+}
+
 function depart() {
   if (busy) return;
-  const n = bed.children.length;
-  if (n === target) {
+  const wrong = targets.find((t) => countInBed(t.cargo.emoji) !== t.count);
+  if (!wrong) {
     busy = true;
     $("go").disabled = true;
     score++;
@@ -241,8 +260,9 @@ function depart() {
     setTimeout(newRound, 2300);
   } else {
     wrongSound();
+    const n = countInBed(wrong.cargo.emoji);
     $("message").textContent =
-      n < target ? "あれ? たりないよ。かぞえてみよう!" : "あれ? おおいよ。かぞえてみよう!";
+      `あれ? ${wrong.cargo.name}が ${n < wrong.count ? "たりないよ" : "おおいよ"}。かぞえてみよう!`;
     truck.classList.add("shake");
     truck.addEventListener("animationend", () => truck.classList.remove("shake"), { once: true });
   }
